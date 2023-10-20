@@ -7,40 +7,33 @@
 //
 // john at wizworks dot net
 //
-#include <avr/io.h>
-#include <util/delay.h>
-
-const int channel1 = 0; // Rename the LED pin to channel1 (physical pin 5)
+const int pwmPin = 0; // PB0 on ATtiny85
+int currentDutyCycle = 128; // Initial duty cycle (50%)
 
 void setup() {
-  // Set the LED pin as an output
-  DDRB |= (1 << DDB1);
+  // Set the PWM pin as an output
+  pinMode(pwmPin, OUTPUT);
+  
+  // Configure Timer0 for Fast PWM with doubled frequency
+  TCCR0A = (1 << WGM01) | (1 << WGM00) | (1 << COM0A1);
+  TCCR0B = (1 << CS00); // No prescaler (double frequency)
+
+  // Initialize a seed for the random number generator
+  randomSeed(analogRead(0));
 }
 
 void loop() {
-  int brightness = 0;
-  int direction = 1; // 1 for increasing brightness, -1 for decreasing
-
-  while (true) {
-    // Randomly decide whether to increase or decrease brightness
-    if (random(2) == 0) {
-      direction *= -1;
-    }
-
-    // Adjust brightness within the range [0, 255]
-    brightness += direction;
-
-    // Ensure brightness stays within the acceptable range
-    if (brightness < 0) {
-      brightness = 1;
-    } else if (brightness > 255) {
-      brightness = 255;
-    }
-
-    // Set LED brightness
-    analogWrite(channel1, brightness); // Use channel1 instead of ledPin
-
-    // Add a delay for a fading effect
-    delay(5);
+  // Generate a new random duty cycle value
+  int newDutyCycle = random(50, 255); // X% of 255 (8-bit PWM)
+  
+  // Gradual transition between the current and new duty cycle
+  int step = (newDutyCycle > currentDutyCycle) ? 1 : -1;
+  while (currentDutyCycle != newDutyCycle) {
+    currentDutyCycle += step;
+    OCR0A = currentDutyCycle;
+    delay(5); // Delay between duty cycle increments (you can adjust this)
   }
+  
+  // Delay after reaching the new duty cycle
+  delay(200); // Adjust as needed
 }
